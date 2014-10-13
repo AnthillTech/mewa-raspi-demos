@@ -9,7 +9,8 @@ TUNNELING_SERVER = "localhost:9000"
 # Unique for tunnel server device name (no spaces allowed)
 DEVICE_NAME = "test"
 # Provide content from this server
-LOCAL_SERVER_URL = "bluenotepad.com"
+LOCAL_SERVER_URL = "192.168.1.1"
+# LOCAL_SERVER_URL = "icplayer.com"
 
 
 
@@ -18,9 +19,9 @@ def run():
     socket = create_connection(tunnelServerUrl)
     while True:
         msg = socket.recv().decode("utf-8")
-        (msgId, method, path, body) = parseMessage(msg)
-        response = callWebserver(method, path, body)
-        headers = buildHeaders(msgId, response)
+        parsedMsg = parseMessage(msg)
+        response = callWebserver(parsedMsg["method"], parsedMsg["path"], parsedMsg["headers"], parsedMsg["body"])
+        headers = buildHeaders(parsedMsg["msgId"], response)
         body = response.read()
         resp = bytes(headers) + body
         socket.send_binary(resp)
@@ -28,21 +29,34 @@ def run():
         
 def parseMessage(msg):
     ''' (msgId, method, path, body) '''
-    lines = msg.split("\n")
-    return (lines[0], lines[1], lines[2], lines[3])
+    sections = msg.split("\n\n")
+    lines = sections[0].split("\n")
+    body = sections[1]
+    headers = {}
+    for i in range (3, len(lines)):
+        index = lines[i].index(":")
+        if index > 0 and index < len(lines[i])-1:
+            k = lines[i][:index]
+            v = lines[i][index+1:]
+            headers[k] = v
+    return {"msgId": lines[0], 
+            "method": lines[1], 
+            "path": lines[2], 
+            "headers": headers,
+            "body": body }
 
 
 def buildHeaders(msgId, response):
-        headers = msgId + "\n" + str(response.status) + "\n"
-        for (k,v) in response.getheaders():
-            headers += k + ":" + v + "\n"
-        return headers + "\n"
+    headers = msgId + "\n" + str(response.status) + "\n"
+    for (k,v) in response.getheaders():
+        headers += k + ":" + v + "\n"
+    return headers + "\n"
         
 
-def callWebserver(method, path, body):
-        conn = httplib.HTTPConnection(LOCAL_SERVER_URL)
-        conn.request(method, path, body)
-        return conn.getresponse()
+def callWebserver(method, path, headers, body):
+    conn = httplib.HTTPConnection(LOCAL_SERVER_URL)
+    conn.request(method, path, body, headers)
+    return conn.getresponse()
 
 if __name__ == "__main__":
     while True:
