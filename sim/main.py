@@ -4,16 +4,16 @@
 # =============================================================================
 
 from websocket import create_connection, WebSocketTimeoutException
-import socket
 import time
 import json
 import Protocol
+import ssl
 
 
-MEWA_SERVER = "localhost:9000"
+MEWA_SERVER = "ws://channels.antspot.pl/ws"
 DEVICE_NAME = "simulator"
-CHANNEL_NAME = "test"
-PASSWORD = "test"
+CHANNEL_NAME = "antspot.Simulator"
+PASSWORD = "w61sxxtj"
 
 STATUS_NOCONNECTION = 0    
 STATUS_CONNECTING = 1
@@ -23,7 +23,7 @@ class Connection:
 
     def __init__(self, server, services):
         self._services = services
-        self._serverUrl = "ws://%s/ws" % server
+        self._serverUrl = server
         self._status = STATUS_NOCONNECTION
          
     def run(self, channel, device, password):
@@ -34,7 +34,9 @@ class Connection:
                 self._connectToChannel(channel, device, password)
                 self._status = STATUS_CONNECTING
                 while self._status != STATUS_NOCONNECTION:
+		    print("read")
                     packet = self._readPacket()
+		    print(packet)
                     if self._status == STATUS_CONNECTING:
                         self._processConnecting(packet)
                     elif self._status == STATUS_CONNECTED:
@@ -90,6 +92,6 @@ class Connection:
 
         
 if __name__ == "__main__":
-    connection = Connection(MEWA_SERVER, ["org.fi24.temperature"])
+    connection = Connection(MEWA_SERVER, [""])
     connection.run(CHANNEL_NAME, DEVICE_NAME, PASSWORD)
     
